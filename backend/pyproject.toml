@@ -1,0 +1,65 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Émy Trabelsi", email = "pro.emy.trabelsi@proton.me" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "alembic>=1.20.1",
+    "apscheduler>=3.11.3",
+    "fastapi[standard]>=0.165.0",
+    "httpx>=0.28.1",
+    "pydantic>=2.14.4",
+    "pydantic-settings>=2.16.3",
+    "rapidfuzz>=3.14.6",
+    "sqlalchemy>=2.1.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.2.0"
+]
+
+[project.scripts]
+backend = "backend.main:main"
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.6",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312" # match your Python runtime
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # Pyflakes (unused imports/vars, undefined names)
+    "I",   # isort (import sorting)
+    "UP",  # pyupgrade (modern Python syntax for your target-version)
+    "B",   # flake8-bugbear (likely bugs and design gotchas)
+    "SIM", # flake8-simplify (cleaner control flow)
+    "FAST",# FastAPI-specific lint rules
+]
+ignore = [
+    # Handled by `ruff format` when formatting is enabled
+    "E501",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests often use assert statements, magic values, or fixtures cleanly
+"tests/**/*.py" = ["S101"]
+# Auto-generated Alembic migrations can have long lines or unused imports
+"alembic/versions/*.py" = ["E501", "F401"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
