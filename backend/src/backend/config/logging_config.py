@@ -23,5 +23,6 @@ def setup_logging(level: str = "INFO") -> None:
         uv_logger.propagate = True
         uv_logger.setLevel(log_level)
 
-    for noisy_logger in ("httpcore", "httpx", "urllib3"):
-        logging.getLogger(noisy_logger).setLevel(max(log_level, logging.WARNING))
+    logging.getLogger("httpx").setLevel(max(log_level, logging.WARNING))
+    if log_level <= logging.DEBUG:
+        logging.getLogger("httpcore").setLevel(logging.WARNING)

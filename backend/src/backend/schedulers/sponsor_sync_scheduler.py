@@ -3,6 +3,6 @@ from apscheduler.triggers.cron import CronTrigger
 
 from backend.services.sync_sponsors import sync_sponsors
 
-sched = BackgroundScheduler()
+sponsor_sync_scheduler = BackgroundScheduler()
 
-sched.add_job(sync_sponsors, "cron", CronTrigger.from_crontab("0 2 * * *"))
+sponsor_sync_scheduler.add_job(sync_sponsors, CronTrigger.from_crontab("0 2 * * *"))

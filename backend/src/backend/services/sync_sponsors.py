@@ -1,2 +1,2 @@
 def sync_sponsors():
-    return True
+    raise NotImplementedError()
