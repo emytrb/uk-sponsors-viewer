@@ -1,13 +1,12 @@
 from functools import lru_cache
-from typing import Literal
 
 from pydantic import HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict()
-    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    model_config = SettingsConfigDict(env_file=".env")
+    log_level: str = "INFO"
     uk_sponsors_url: HttpUrl = HttpUrl(
         "https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers"
     )

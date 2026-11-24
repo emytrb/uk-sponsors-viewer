@@ -13,6 +13,9 @@ ASSET_BASE = "https://assets.publishing.service.gov.uk/media/some-media-id"
 FILENAME = "SP_-_Worker_and_Temporary_Worker_Web_Register_-_{date}.csv"
 CSV_PATH_MARKER = "SP_-_Worker_and_Temporary_Worker_Web_Register_-_"
 
+Handler = Callable[[httpx.Request], httpx.Response]
+ClientFactory = Callable[[Handler], httpx.Client]
+
 
 def _csv_url(date: str) -> str:
     return f"{ASSET_BASE}/{FILENAME.format(date=date)}"
@@ -24,41 +27,33 @@ def _page_html(*csv_urls: str) -> str:
 
 
 @pytest.fixture
-def install_mock_client(
-    monkeypatch: pytest.MonkeyPatch,
-) -> Callable[[Callable[[httpx.Request], httpx.Response]], None]:
-    """Route ``httpx.Client`` requests in ``sponsors_fetcher`` to a handler."""
+def mock_client() -> ClientFactory:
+    """Build an ``httpx.Client`` that serves requests from a handler."""
 
-    def install(handler: Callable[[httpx.Request], httpx.Response]) -> None:
-        transport = httpx.MockTransport(handler)
-        real_client = httpx.Client
+    def build(handler: Handler) -> httpx.Client:
+        return httpx.Client(
+            transport=httpx.MockTransport(handler),
+            follow_redirects=True,
+        )
 
-        def client_factory(*args: object, **kwargs: object) -> httpx.Client:
-            kwargs.pop("transport", None)
-            return real_client(*args, transport=transport, **kwargs)  # type: ignore[arg-type]
-
-        monkeypatch.setattr(sponsors_fetcher.httpx, "Client", client_factory)
-
-    return install
+    return build
 
 
-def test_get_page_html_returns_response_text(
-    install_mock_client: Callable[[Callable[[httpx.Request], httpx.Response]], None],
-) -> None:
+def test_get_page_html_returns_response_text(mock_client: ClientFactory) -> None:
     requested: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         requested.append(str(request.url))
         return httpx.Response(200, text="<html>register page</html>")
 
-    install_mock_client(handler)
+    with mock_client(handler) as client:
+        assert get_page_html(client) == "<html>register page</html>"
 
-    assert get_page_html() == "<html>register page</html>"
     assert requested == [str(sponsors_fetcher.settings.uk_sponsors_url)]
 
 
 def test_get_page_html_retries_transient_failures(
-    install_mock_client: Callable[[Callable[[httpx.Request], httpx.Response]], None],
+    mock_client: ClientFactory,
     sleep_spy: list[float],
 ) -> None:
     calls: list[httpx.Request] = []
@@ -69,15 +64,15 @@ def test_get_page_html_retries_transient_failures(
             return httpx.Response(503)
         return httpx.Response(200, text="<html>ok</html>")
 
-    install_mock_client(handler)
+    with mock_client(handler) as client:
+        assert get_page_html(client) == "<html>ok</html>"
 
-    assert get_page_html() == "<html>ok</html>"
     assert len(calls) == 2
     assert len(sleep_spy) == 1
 
 
 def test_get_csv_file_returns_response_text(
-    install_mock_client: Callable[[Callable[[httpx.Request], httpx.Response]], None],
+    mock_client: ClientFactory,
     read_test_file: Callable[[str], str],
 ) -> None:
     expected = read_test_file("test_file_2.csv")
@@ -85,13 +80,12 @@ def test_get_csv_file_returns_response_text(
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, text=expected)
 
-    install_mock_client(handler)
-
-    assert get_csv_file(_csv_url("2026-11-20")) == expected
+    with mock_client(handler) as client:
+        assert get_csv_file(client, _csv_url("2026-11-20")) == expected
 
 
 def test_get_uk_sponsors_csv_file_returns_first_valid_csv(
-    install_mock_client: Callable[[Callable[[httpx.Request], httpx.Response]], None],
+    mock_client: ClientFactory,
     csv_settings: Settings,
     read_test_file: Callable[[str], str],
 ) -> None:
@@ -106,15 +100,15 @@ def test_get_uk_sponsors_csv_file_returns_first_valid_csv(
             return httpx.Response(200, text=valid_csv)
         return httpx.Response(200, text=page)
 
-    install_mock_client(handler)
+    with mock_client(handler) as client:
+        assert get_uk_sponsors_csv_file(client) == valid_csv
 
-    assert get_uk_sponsors_csv_file() == valid_csv
     assert any(path.endswith(FILENAME.format(date="2026-11-20")) for path in requested)
     assert sum(path.endswith(".csv") for path in requested) >= 1
 
 
 def test_get_uk_sponsors_csv_file_skips_invalid_csvs(
-    install_mock_client: Callable[[Callable[[httpx.Request], httpx.Response]], None],
+    mock_client: ClientFactory,
     csv_settings: Settings,
     read_test_file: Callable[[str], str],
 ) -> None:
@@ -132,28 +126,26 @@ def test_get_uk_sponsors_csv_file_skips_invalid_csvs(
             return httpx.Response(200, text=valid_csv)
         return httpx.Response(200, text=_page_html(invalid_url, valid_url))
 
-    install_mock_client(handler)
+    with mock_client(handler) as client:
+        assert get_uk_sponsors_csv_file(client) == valid_csv
 
-    assert get_uk_sponsors_csv_file() == valid_csv
     assert any(path.endswith(FILENAME.format(date="2026-11-18")) for path in requested)
     assert any(path.endswith(FILENAME.format(date="2026-11-20")) for path in requested)
 
 
 def test_get_uk_sponsors_csv_file_raises_when_no_csv_link(
-    install_mock_client: Callable[[Callable[[httpx.Request], httpx.Response]], None],
+    mock_client: ClientFactory,
     csv_settings: Settings,
 ) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, text="<html><body>No downloads here</body></html>")
 
-    install_mock_client(handler)
-
-    with pytest.raises(RuntimeError, match="No valid CSV file found"):
-        get_uk_sponsors_csv_file()
+    with mock_client(handler) as client, pytest.raises(RuntimeError, match="No valid CSV file found"):
+        get_uk_sponsors_csv_file(client)
 
 
 def test_get_uk_sponsors_csv_file_raises_when_all_csvs_invalid(
-    install_mock_client: Callable[[Callable[[httpx.Request], httpx.Response]], None],
+    mock_client: ClientFactory,
     csv_settings: Settings,
     read_test_file: Callable[[str], str],
 ) -> None:
@@ -165,14 +157,12 @@ def test_get_uk_sponsors_csv_file_raises_when_all_csvs_invalid(
             return httpx.Response(200, text=header_only)
         return httpx.Response(200, text=page)
 
-    install_mock_client(handler)
-
-    with pytest.raises(RuntimeError, match="No valid CSV file found"):
-        get_uk_sponsors_csv_file()
+    with mock_client(handler) as client, pytest.raises(RuntimeError, match="No valid CSV file found"):
+        get_uk_sponsors_csv_file(client)
 
 
 def test_get_uk_sponsors_csv_file_skips_last_fetched_filename(
-    install_mock_client: Callable[[Callable[[httpx.Request], httpx.Response]], None],
+    mock_client: ClientFactory,
     csv_settings: Settings,
     read_test_file: Callable[[str], str],
     monkeypatch: pytest.MonkeyPatch,
@@ -185,7 +175,5 @@ def test_get_uk_sponsors_csv_file_skips_last_fetched_filename(
             return httpx.Response(200, text=read_test_file("test_file_2.csv"))
         return httpx.Response(200, text=_page_html(_csv_url("2026-11-20")))
 
-    install_mock_client(handler)
-
-    with pytest.raises(RuntimeError, match="No valid CSV file found"):
-        get_uk_sponsors_csv_file()
+    with mock_client(handler) as client, pytest.raises(RuntimeError, match="No valid CSV file found"):
+        get_uk_sponsors_csv_file(client)

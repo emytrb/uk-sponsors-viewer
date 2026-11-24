@@ -30,7 +30,6 @@ def test_parses_valid_csv_file(
         "Type & Rating": "Worker (A rating)",
         "Route": "Skilled Worker",
     }
-    assert result.checksum == ""
 
 
 def test_header_only_file_is_rejected(

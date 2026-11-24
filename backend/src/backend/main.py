@@ -1,7 +1,8 @@
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI, Path
+from fastapi import FastAPI
 
 from backend.api.routes import router
 from backend.config.logging_config import setup_logging
@@ -26,6 +27,7 @@ async def lifespan(app: FastAPI):
     print_banner()
     yield
     logger.info("Shutting down FastAPI service")
+    stop_schedulers()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -34,6 +36,10 @@ app.include_router(router)
 
 def start_schedulers() -> None:
     sponsor_sync_scheduler.start()
+
+
+def stop_schedulers() -> None:
+    sponsor_sync_scheduler.shutdown(wait=False)
 
 
 @app.get("/")

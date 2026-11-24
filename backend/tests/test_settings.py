@@ -47,11 +47,6 @@ def test_settings_parse_list_environment_variable(clean_settings_env: pytest.Mon
     assert settings.sponsors_file_expected_headers == ["Name", "City"]
 
 
-def test_invalid_log_level_is_rejected(settings_factory) -> None:
-    with pytest.raises(ValidationError):
-        settings_factory(log_level="TRACE")
-
-
 def test_invalid_sponsors_url_is_rejected(settings_factory) -> None:
     with pytest.raises(ValidationError):
         settings_factory(uk_sponsors_url="not-a-url")

@@ -14,13 +14,11 @@ class CsvCheckResult:
         filename: str,
         is_valid: bool,
         row_count: int | None = None,
-        checksum: str | None = None,
         rows: list[dict[str, str]] | None = None,
     ):
         self.filename = filename
         self.is_valid = is_valid
         self.row_count = row_count
-        self.checksum = checksum
         self.rows = rows
 
 
@@ -35,17 +33,17 @@ def check_csv(filename: str, content: str) -> CsvCheckResult:
     rows: list[dict[str, str]] = list(reader)
     if not is_row_count_valid(len(rows)):
         return CsvCheckResult(filename, False)
-    return CsvCheckResult(filename, True, len(rows), "", rows)
+    return CsvCheckResult(filename, True, len(rows), rows)
 
 
-def is_headers_valid(headers: list[str]):
+def is_headers_valid(headers: list[str]) -> bool:
     if not all(expected_header in headers for expected_header in settings.sponsors_file_expected_headers):
         logger.debug(f"Headers don't correspond to expected headers. (actual headers: {str(headers)})")
         return False
     return True
 
 
-def is_row_count_valid(count: int):
+def is_row_count_valid(count: int) -> bool:
     if not settings.sponsors_enable_row_check:
         return True
     if count < settings.sponsors_minimum_row_count:

@@ -30,7 +30,7 @@ def _retry_after_seconds(response: httpx.Response) -> float | None:
 
 
 def _backoff_delay(attempt: int, retry_policy: RetryPolicy, retry_after: float | None = None) -> float:
-    """Exponential backoff with jitter, capped at ``BACKOFF_MAX_SECONDS``."""
+    """Exponential backoff with jitter, capped at RetryPolicy's ``backoff_max_seconds``."""
     if retry_after is not None:
         return min(retry_after, retry_policy.backoff_max_seconds)
     ceiling = min(retry_policy.backoff_base_seconds * 2 ** (attempt - 1), retry_policy.backoff_max_seconds)
@@ -46,7 +46,7 @@ def get_response_with_retries(
     """GET ``url``, retrying transient failures with exponential backoff.
 
     Retries transport errors (connect/read timeouts, dropped connections, proxy
-    failures) and the retryable status codes in ``RETRYABLE_STATUS_CODES``.
+    failures) and the retryable status codes in ``retryable_status_codes``.
     Any other status - 404, 403, ... - is raised immediately, since retrying
     cannot change the outcome. ``Retry-After`` is honoured when present.
     """

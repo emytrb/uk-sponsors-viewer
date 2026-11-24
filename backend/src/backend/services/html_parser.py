@@ -1,5 +1,6 @@
 import logging
 import re
+from re import Match
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +22,8 @@ ANY_CSV_FILE_RE = re.compile(r"https?://[^\"'\s<>]+/(?P<filename>[^/\"'\s<>]+\.c
 PATTERNS = [FULL_URL_RE, FILENAME_ONLY_RE, ANY_CSV_FILE_RE]
 
 
-def get_all_matching_file_urls(page_html: str) -> list[re.Match[str]]:
-    urls = []
+def get_all_matching_file_urls(page_html: str) -> list[Match[str]]:
+    urls: dict[str, Match[str]] = {}
     for p in PATTERNS:
         logger.info(f"Starting pattern: {p}")
         matches = list(p.finditer(page_html))
@@ -31,5 +32,6 @@ def get_all_matching_file_urls(page_html: str) -> list[re.Match[str]]:
             continue
         logger.info(f"Found {len(matches)} matching file(s).")
         for match in matches:
-            urls.append(match)
-    return list(dict.fromkeys(urls))
+            url = match.group(0)
+            urls[url] = match
+    return list(urls.values())
