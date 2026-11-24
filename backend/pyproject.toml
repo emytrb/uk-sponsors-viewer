@@ -15,12 +15,7 @@ dependencies = [
     "pydantic>=2.14.4",
     "pydantic-settings>=2.16.3",
     "rapidfuzz>=3.14.6",
-    "sqlalchemy>=2.1.9",
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=9.2.0"
+    "sqlalchemy>=2.1.9"
 ]
 
 [project.scripts]
@@ -32,22 +27,33 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "pytest>=9.2.0",
     "ruff>=0.17.6",
 ]
 
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = [
+    "--strict-config",
+    "--strict-markers",
+    "-ra",
+]
+
 [tool.ruff]
-line-length = 88
-target-version = "py312" # match your Python runtime
+line-length = 120
+target-version = "py314"
 
 [tool.ruff.lint]
 select = [
-    "E",   # pycodestyle errors
-    "F",   # Pyflakes (unused imports/vars, undefined names)
-    "I",   # isort (import sorting)
-    "UP",  # pyupgrade (modern Python syntax for your target-version)
-    "B",   # flake8-bugbear (likely bugs and design gotchas)
-    "SIM", # flake8-simplify (cleaner control flow)
-    "FAST",# FastAPI-specific lint rules
+    "E",
+    "F",
+    "I",
+    "UP",
+    "B",
+    "SIM",
+    "FAST",
 ]
 ignore = [
     # Handled by `ruff format` when formatting is enabled
@@ -57,8 +63,6 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # Tests often use assert statements, magic values, or fixtures cleanly
 "tests/**/*.py" = ["S101"]
-# Auto-generated Alembic migrations can have long lines or unused imports
-"alembic/versions/*.py" = ["E501", "F401"]
 
 [tool.ruff.format]
 quote-style = "double"
